@@ -1,8 +1,8 @@
 name: Check and Build
 
 env:
-  kernel_repository: YoriInstitute/android_kernel_xiaomi_sdm845
-  kernel_branch: lineage-22.1
+  kernel_repository: jianyi520/android_kernel_xiaomi_sdm845
+  kernel_branch: sukisuv4.0.0-edeff936
   device: equuleus
   clang_version: 19
   defconfig: |
@@ -98,11 +98,7 @@ jobs:
               cat arch/arm64/configs/$line >>arch/arm64/configs/merged_defconfig
           done <<<"$defconfig"
 
-      - name: Setup SukiSU
-        run: |
-          curl -LSs https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh | bash -s main
-          echo 'CONFIG_KSU_MANUAL_HOOK=y' >>arch/arm64/configs/merged_defconfig
-
+      
 
 
       - name: Apply kernel patch
