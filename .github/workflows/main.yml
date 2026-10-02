@@ -2,7 +2,7 @@ name: Check and Build
 
 env:
   kernel_repository: jianyi520/android_kernel_xiaomi_sdm845
-  kernel_branch: sukisuv4.0.0-edeff936
+  kernel_branch: lineage-22.2
   device: equuleus
   clang_version: 19
   defconfig: |
@@ -11,11 +11,8 @@ env:
   kernel_patch: |
   kernelsu_patch: |
 
-
 on:
   push:
-  schedule:
-    - cron: "50 9,21 * * *"
   workflow_dispatch:
     inputs:
       allow_rebuild:
@@ -24,33 +21,14 @@ on:
         default: false
 
 jobs:
-  check_kernelsu_update:
-    name: Check KernelSU update
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check KernelSU version
-        id: check_kernelsu_version
-        run: |
-          local_version=$(curl -L --header 'authorization: Bearer ${{ github.token }}' https://api.github.com/repos/${{ github.repository }}/releases/latest | jq -r .tag_name)
-          remote_version=$(curl -L https://api.github.com/repos/SukiSU-Ultra/SukiSU-Ultra/releases/latest | jq -r .tag_name)
-          echo local_version=$local_version | tee -a $GITHUB_OUTPUT
-          echo remote_version=$remote_version | tee -a $GITHUB_OUTPUT
-    outputs:
-      local_version: ${{ steps.check_kernelsu_version.outputs.local_version }}
-      remote_version: ${{ steps.check_kernelsu_version.outputs.remote_version }}
-
   build:
     name: Build kernel
-    needs: check_kernelsu_update
-    if: inputs.allow_rebuild || needs.check_kernelsu_update.outputs.local_version != needs.check_kernelsu_update.outputs.remote_version
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - name: Set env
         run: |
-          echo kernelsu_remote_version=${{ needs.check_kernelsu_update.outputs.remote_version }} | tee -a $GITHUB_ENV
-
           if [[ "$clang_version" = "r"* ]] || [[ "$clang_version" = "latest" ]]; then
               clang_type=aosp
           else
@@ -71,7 +49,6 @@ jobs:
               binutils-aarch64-linux-gnu \
               gcc-aarch64-linux-gnu \
               gcc-arm-linux-gnueabi
-
 
       - name: Checkout kernel source
         uses: actions/checkout@v4
@@ -98,8 +75,12 @@ jobs:
               cat arch/arm64/configs/$line >>arch/arm64/configs/merged_defconfig
           done <<<"$defconfig"
 
-      
-
+      - name: Setup ReSukiSU
+        run: |
+          # https://resukisu.org/guide/build.html
+          curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/main/kernel/setup.sh" | bash
+          echo 'CONFIG_KSU=y' >>arch/arm64/configs/merged_defconfig
+          echo 'CONFIG_KSU_MANUAL_HOOK=y' >>arch/arm64/configs/merged_defconfig
 
       - name: Apply kernel patch
         run: |
@@ -174,7 +155,6 @@ jobs:
           KCFLAGS=-Wno-error
           " | tee -a $GITHUB_ENV
 
-
       - name: Make defconfig
         run: |
           make $flags merged_defconfig
@@ -190,7 +170,7 @@ jobs:
 
           cat >AnyKernel3-master/anykernel.sh <<EOF
           properties() { '
-          kernel.string=$kernel_repository $kernel_branch with KernelSU $kernelsu_remote_version for $device
+          kernel.string=$kernel_repository $kernel_branch with ReSukiSU for $device
           do.devicecheck=1
           do.modules=0
           do.cleanup=1
@@ -226,7 +206,8 @@ jobs:
       - name: Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ env.kernelsu_remote_version }}
+          tag_name: resukisu-main
+          update_release: true
           body: |
             Device:
             ${{ env.device }}
@@ -234,7 +215,7 @@ jobs:
             Kernel:
             https://github.com/${{ env.kernel_repository }}/tree/${{ env.kernel_commit_id }}
 
-            KernelSU:
-            https://github.com/tiann/KernelSU/releases/tag/${{ env.kernelsu_remote_version }}
+            ReSukiSU:
+            https://github.com/ReSukiSU/ReSukiSU
           files: |
             boot.zip
