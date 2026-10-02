@@ -69,7 +69,9 @@ jobs:
           sudo apt install -y \
               binutils-arm-linux-gnueabi \
               binutils-aarch64-linux-gnu \
-              g++-aarch64-linux-gnu
+              gcc-aarch64-linux-gnu \
+              gcc-arm-linux-gnueabi
+
 
       - name: Checkout kernel source
         uses: actions/checkout@v4
@@ -171,11 +173,10 @@ jobs:
           echo flags=" \
           O=out \
           ARCH=arm64 \
-          LLVM=1 \
-          LLVM_IAS=1 \
           CROSS_COMPILE=aarch64-linux-gnu- \
           CROSS_COMPILE_ARM32=arm-linux-gnueabi-
           " | tee -a $GITHUB_ENV
+
 
       - name: Make defconfig
         run: |
