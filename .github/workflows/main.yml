@@ -1,16 +1,16 @@
 name: Check and Build
 
 env:
-  kernel_repository: LineageOS/android_kernel_google_msm-4.9
-  kernel_branch: lineage-21
-  device: crosshatch
-  clang_version: r365631c
+  kernel_repository: YoriInstitute/android_kernel_xiaomi_sdm845
+  kernel_branch: lineage-22.1
+  device: equuleus
+  clang_version: 19
   defconfig: |
-    sdm845-perf_defconfig
+    vendor/xiaomi/mi845_defconfig
+    vendor/xiaomi/equuleus.config
   kernel_patch: |
-    support-umount-modules-kernel.patch
   kernelsu_patch: |
-    support-umount-modules-kernelsu.patch
+
 
 on:
   push:
@@ -32,7 +32,7 @@ jobs:
         id: check_kernelsu_version
         run: |
           local_version=$(curl -L --header 'authorization: Bearer ${{ github.token }}' https://api.github.com/repos/${{ github.repository }}/releases/latest | jq -r .tag_name)
-          remote_version=$(curl -L https://api.github.com/repos/tiann/KernelSU/releases/latest | jq -r .tag_name)
+          remote_version=$(curl -L https://api.github.com/repos/SukiSU-Ultra/SukiSU-Ultra/releases/latest | jq -r .tag_name)
           echo local_version=$local_version | tee -a $GITHUB_OUTPUT
           echo remote_version=$remote_version | tee -a $GITHUB_OUTPUT
     outputs:
@@ -96,13 +96,11 @@ jobs:
               cat arch/arm64/configs/$line >>arch/arm64/configs/merged_defconfig
           done <<<"$defconfig"
 
-      - name: Setup KernelSU
-        run: |
-          # https://kernelsu.org/zh_CN/guide/how-to-integrate-for-non-gki.html
-          curl -L https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh | bash -s -- $kernelsu_remote_version
-          echo 'CONFIG_KPROBES=y' >>arch/arm64/configs/merged_defconfig
-          echo 'CONFIG_HAVE_KPROBES=y' >>arch/arm64/configs/merged_defconfig
-          echo 'CONFIG_KPROBE_EVENTS=y' >>arch/arm64/configs/merged_defconfig
+      - name: Setup SukiSU
+  run: |
+    curl -LSs https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh | bash -s main
+    echo 'CONFIG_KSU_MANUAL_HOOK=y' >>arch/arm64/configs/merged_defconfig
+
 
       - name: Apply kernel patch
         run: |
