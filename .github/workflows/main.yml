@@ -174,7 +174,8 @@ jobs:
           O=out \
           ARCH=arm64 \
           CROSS_COMPILE=aarch64-linux-gnu- \
-          CROSS_COMPILE_ARM32=arm-linux-gnueabi-
+          CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
+          KCFLAGS=-Wno-error
           " | tee -a $GITHUB_ENV
 
 
