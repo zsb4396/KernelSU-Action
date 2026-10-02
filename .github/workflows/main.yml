@@ -97,9 +97,10 @@ jobs:
           done <<<"$defconfig"
 
       - name: Setup SukiSU
-  run: |
-    curl -LSs https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh | bash -s main
-    echo 'CONFIG_KSU_MANUAL_HOOK=y' >>arch/arm64/configs/merged_defconfig
+        run: |
+          curl -LSs https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh | bash -s main
+          echo 'CONFIG_KSU_MANUAL_HOOK=y' >>arch/arm64/configs/merged_defconfig
+
 
 
       - name: Apply kernel patch
