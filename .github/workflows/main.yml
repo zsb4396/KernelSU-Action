@@ -81,8 +81,10 @@ jobs:
           curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/main/kernel/setup.sh" | bash
           echo 'CONFIG_KSU=y' >>arch/arm64/configs/merged_defconfig
           echo 'CONFIG_KSU_MANUAL_HOOK=y' >>arch/arm64/configs/merged_defconfig
-                    sed -i 's|^#source "drivers/kernelsu/Kconfig"|source "drivers/kernelsu/Kconfig"|' drivers/Kconfig
-          grep -n "kernelsu" drivers/Kconfig || true
+          sed -i 's|^#source "drivers/kernelsu/Kconfig"|source "drivers/kernelsu/Kconfig"|' drivers/Kconfig
+          sed -i 's|^#obj-$(CONFIG_KSU) += kernelsu/|obj-$(CONFIG_KSU) += kernelsu/|' drivers/Makefile
+          grep -n "kernelsu" drivers/Kconfig drivers/Makefile || true
+
 
       - name: Apply kernel patch
         run: |
