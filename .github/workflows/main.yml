@@ -158,10 +158,21 @@ jobs:
       - name: Make defconfig
         run: |
           make $flags merged_defconfig
+          
+      - name: Verify KSU config
+        run: |
+          grep -q "CONFIG_KSU=y" out/.config && echo "KSU config OK" || { echo "KSU config MISSING - exit 1"; exit 1; }
+          grep -n "kernelsu" drivers/Kconfig drivers/Makefile || echo "no kernelsu refs in Kconfig/Makefile"
+          ls -l drivers/kernelsu || echo "no symlink"
 
       - name: Make
         run: |
           make $flags -j$(nproc --all)
+
+      - name: Verify KSU driver in kernel image
+        run: |
+          zcat out/arch/arm64/boot/Image.gz-dtb > /tmp/kernel.img 2>/dev/null || true
+          if grep -aq "KernelSU" /tmp/kernel.img; then echo "KSU driver OK"; else echo "KSU driver MISSING"; exit 1; fi
 
       - name: AnyKernel3
         run: |
