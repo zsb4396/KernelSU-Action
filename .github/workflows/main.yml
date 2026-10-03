@@ -161,9 +161,10 @@ jobs:
           
       - name: Verify KSU config
         run: |
+          grep -n "kernelsu" drivers/Kconfig drivers/Makefile || true
+          ls -l drivers/kernelsu || true
           grep -q "CONFIG_KSU=y" out/.config && echo "KSU config OK" || { echo "KSU config MISSING - exit 1"; exit 1; }
-          grep -n "kernelsu" drivers/Kconfig drivers/Makefile || echo "no kernelsu refs in Kconfig/Makefile"
-          ls -l drivers/kernelsu || echo "no symlink"
+
 
       - name: Make
         run: |
