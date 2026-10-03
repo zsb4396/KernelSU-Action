@@ -81,9 +81,27 @@ jobs:
           curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/main/kernel/setup.sh" | bash
           echo 'CONFIG_KSU=y' >>arch/arm64/configs/merged_defconfig
           echo 'CONFIG_KSU_MANUAL_HOOK=y' >>arch/arm64/configs/merged_defconfig
+          echo 'CONFIG_KSU_MANUAL_HOOK_AUTO_SETUID_HOOK=y' >>arch/arm64/configs/merged_defconfig
           sed -i 's|^#source "drivers/kernelsu/Kconfig"|source "drivers/kernelsu/Kconfig"|' drivers/Kconfig
           sed -i 's|^#obj-$(CONFIG_KSU) += kernelsu/|obj-$(CONFIG_KSU) += kernelsu/|' drivers/Makefile
-          grep -n "kernelsu" drivers/Kconfig drivers/Makefile || true
+          # legacy hook cleanup for ReSukiSU UL
+          sed -i 's/ksu_vfs_read_hook/ksu_init_rc_hook/g' fs/read_write.c
+          perl -0pi -e 's/#ifdef CONFIG_KSU\nextern bool is_ksu_transition\(const struct task_security_struct \*old_tsec,\n\t\t\t\tconst struct task_security_struct \*new_tsec\);\n#endif\n//' security/selinux/hooks.c
+          perl -0pi -e 's/#ifdef CONFIG_KSU\n\tif \(is_ksu_transition\(old_tsec, new_tsec\)\)\n\t\treturn 0;\n#endif\n//' security/selinux/hooks.c
+          # add missing fstat ret hooks
+          perl -0pi -e 's/(SYSCALL_DEFINE2\(newfstat, unsigned int, fd, struct stat __user \*, statbuf\)\n\{\n\tstruct kstat stat;\n\tint error = vfs_fstat\(fd, &stat\);\n\n\tif \(!error\)\n\t\terror = cp_new_stat\(&stat, statbuf\);\n\n\treturn error;\n\})/$1#ifdef CONFIG_KSU\n\textern void ksu_handle_newfstat_ret(unsigned int *fd, struct stat __user **statbuf_ptr);\n\tksu_handle_newfstat_ret(\&fd, \&statbuf);\n#endif\n/' fs/stat.c
+          perl -0pi -e 's/(SYSCALL_DEFINE2\(fstat64, unsigned long, fd, struct stat64 __user \*, statbuf\)\n\{\n\tstruct kstat stat;\n\tint error = vfs_fstat\(fd, &stat\);\n\n\tif \(!error\)\n\t\terror = cp_new_stat64\(&stat, statbuf\);\n\n\treturn error;\n\})/$1#ifdef CONFIG_KSU\n\textern void ksu_handle_fstat64_ret(unsigned long *fd, struct stat64 __user **statbuf_ptr);\n\tksu_handle_fstat64_ret(\&fd, \&statbuf);\n#endif\n/' fs/stat.c
+          # expose selinux symbols for ReSukiSU
+          sed -i 's/^static ssize_t (\*write_op\[\])(struct file \*, char \*, size_t) = {/ssize_t (*write_op[])(struct file *, char *, size_t) = {/' security/selinux/selinuxfs.c
+          sed -i 's/^static const struct file_operations sel_handle_status_ops = {/const struct file_operations sel_handle_status_ops = {/' security/selinux/selinuxfs.c
+          sed -i 's/^static DEFINE_MUTEX(sel_mutex);/DEFINE_MUTEX(sel_mutex);/' security/selinux/selinuxfs.c
+          sed -i 's/^static struct page \*selinux_status_page;/struct page *selinux_status_page;/' security/selinux/ss/status.c
+          sed -i 's/^static DEFINE_MUTEX(selinux_status_lock);/DEFINE_MUTEX(selinux_status_lock);/' security/selinux/ss/status.c
+          sed -i 's/^static DEFINE_RWLOCK(policy_rwlock);/DEFINE_RWLOCK(policy_rwlock);/' security/selinux/ss/services.c
+          # verify cleanup
+          grep -n "ksu_vfs_read_hook" fs/read_write.c || echo "legacy read hook removed"
+          grep -n "is_ksu_transition" security/selinux/hooks.c || echo "is_ksu_transition removed"
+          grep -n "ksu_handle_newfstat_ret\|ksu_handle_fstat64_ret" fs/stat.c
 
 
       - name: Apply kernel patch
